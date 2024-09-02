@@ -1,3 +1,27 @@
+gather_info_prompt="""
+You will ask user for the website for which the tlsn plugin needs to be generated. You will ask for 
+website url, api url if available, some sample requests and response that are made on the website. What thing you want to notarize using tlsn.
+
+Example:
+
+Input: https://twitter.com/
+
+Output:
+
+Twitter Profile
+
+Notarize ownership of a twitter profile
+
+Input: https://twitter.com/username
+
+Output:
+
+Twitter Profile
+
+you will store the information in a json and ask the user for confirmation if the json and information is correct. then write a python code
+to save that json in a file called info.json
+"""
+
 plugin_developer_prompt="""
 you are TLSNotary browser extension plugin developer. I will give you the existing boilerplate code along with examples. 
 
