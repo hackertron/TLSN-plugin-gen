@@ -72,7 +72,7 @@ declare module 'main' {
     // Extism exports take no params and return an I32
     export function start(): I32;
     export function two(): I32;
-    export function parseTwitterResp(): I32;
+    export function parseTwitterResp(): I32; # parseTwitterResp is specific for twitter example, this will be changed for each website
     export function three(): I32;
     export function config(): I32;
 }
@@ -134,7 +134,7 @@ export function two() {
     !cookies.auth_token ||
     !cookies.ct0 ||
     !headers['x-csrf-token'] ||
-    !headers['authorization']
+    !headers['authorization'] # might not be needed by all websites
   ) {
     outputJSON(false);
     return;
