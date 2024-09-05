@@ -65,7 +65,9 @@ def main():
         },
         {
             "recipient": plugin_developer,
-            "message": "with the info gathered in previous step and read info.json. and the plugin dev code you have. Modify the code that you have with the info that user provided to you.",
+            "message": """with the info gathered in previous step and read info.json. and the plugin dev code you have.
+            Modify the code that you have with the info that user provided to you. Finally write the plugin code into the respective files using python.
+            Make sure to ask user for confirmation""",
             "silent": False,
             "summary_method": "reflection_with_llm"
         },
