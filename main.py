@@ -1,84 +1,66 @@
-import os
-import autogen
-from autogen import AssistantAgent, UserProxyAgent
+from fastapi import FastAPI, WebSocket
+from fastapi.responses import HTMLResponse
+import uuid
+from autogen_chat import AutogenChat
+import asyncio
+import contextlib
+import uvicorn
 from dotenv import load_dotenv
-from system_prompts import gather_info_prompt, plugin_developer_prompt
+import os
+
 load_dotenv()  # take environment variables from .env.
 
+app = FastAPI()
 
-config_list = [
-    {
-        'model':  'gpt-4', #gpt-3.5-turbo'
-        'api_key': os.getenv('OPENAI_API_KEY'),
-    }
-]
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[AutogenChat] = []
 
-llm_config = {
-    "timeout": 120,
-    "seed": 42, # for caching. once task is run it caches the response,
-    "config_list": config_list,
-    "temperature": 0 #lower temperature more standard lesss creative response, higher is more creative
+    async def connect(self, autogen_chat: AutogenChat):
+        await autogen_chat.websocket.accept()
+        self.active_connections.append(autogen_chat)
 
-}
-assistant = AssistantAgent("assistant", llm_config=llm_config)
+    async def disconnect(self, autogen_chat: AutogenChat):
+        await autogen_chat.client_receive_queue.put("DO_FINISH")
+        print(f"autogen_chat {autogen_chat.chat_id} disconnected")
+        self.active_connections.remove(autogen_chat)
 
-user_proxy = UserProxyAgent(
-    "user_proxy", code_execution_config={"executor": autogen.coding.LocalCommandLineCodeExecutor(work_dir="coding")}
-)
+manager = ConnectionManager()
 
-# Start the chat
-user_proxy = autogen.UserProxyAgent(
-    name="user_proxy",
-    human_input_mode="ALWAYS",
-    max_consecutive_auto_reply=3,
-    is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
-    code_execution_config={
-        "last_n_messages": 3,
-        "work_dir": "code",
-        "use_docker": False,
-    },
-    llm_config=llm_config,
-    system_message="""Reply TERMINATE if the task has been solved at full satisfaction
-    otherwise, reply CONTINUE, or the reason why the task is not solved yet."""
-)
+async def send_to_client(autogen_chat: AutogenChat):
+    while True:
+        reply = await autogen_chat.client_receive_queue.get()
+        if reply and reply == "DO_FINISH":
+            autogen_chat.client_receive_queue.task_done()
+            break
+        await autogen_chat.websocket.send_text(reply)
+        autogen_chat.client_receive_queue.task_done()
+        await asyncio.sleep(0.05)
 
-gather_info_assistant = autogen.AssistantAgent(
-    name="gather_info_assistant",
-    llm_config=llm_config,
-    system_message=gather_info_prompt,
-)
+async def receive_from_client(autogen_chat: AutogenChat):
+    while True:
+        data = await autogen_chat.websocket.receive_text()
+        if data and data == "DO_FINISH":
+            await autogen_chat.client_receive_queue.put("DO_FINISH")
+            await autogen_chat.client_sent_queue.put("DO_FINISH")
+            break
+        await autogen_chat.client_sent_queue.put(data)
+        await asyncio.sleep(0.05)
 
-
-plugin_developer = autogen.AssistantAgent(
-    name="TLSN_plugin_developer",
-    llm_config=llm_config,
-    system_message=plugin_developer_prompt,
-)
-
-def main():
-    chat_results = user_proxy.initiate_chats([
-        {
-            "recipient": gather_info_assistant,
-            "message": "I want to build a tlsn plugin for a website.",
-            "silent": False,
-            "summary_method": "reflection_with_llm"
-        },
-        {
-            "recipient": plugin_developer,
-            "message": """with the info gathered in previous step and read info.json. and the plugin dev code you have.
-            Modify the code that you have with the info that user provided to you. Finally write the plugin code into the respective files using python.
-            Make sure to ask user for confirmation""",
-            "silent": False,
-            "summary_method": "reflection_with_llm"
-        },
-    ])
-
-    for i, chat_res in enumerate(chat_results):
-        print(f"*****{i}th chat*******:")
-        print(chat_res.summary)
-        print("Human input in the middle:", chat_res.human_input)
-        print("Conversation cost: ", chat_res.cost)
-        print("\n\n")
+@app.websocket("/ws/{chat_id}")
+async def websocket_endpoint(websocket: WebSocket, chat_id: str):
+    try:
+        autogen_chat = AutogenChat(chat_id=chat_id, websocket=websocket)
+        await manager.connect(autogen_chat)
+        data = await autogen_chat.websocket.receive_text()
+        future_calls = asyncio.gather(send_to_client(autogen_chat), receive_from_client(autogen_chat))
+        await autogen_chat.start(data)
+        print("DO_FINISHED")
+    except Exception as e:
+        print("ERROR", e)
+    finally:
+        with contextlib.suppress(Exception):
+            await manager.disconnect(autogen_chat)
 
 if __name__ == "__main__":
-    main()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
