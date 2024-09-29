@@ -34,13 +34,15 @@ class AutogenChat():
             name="creator",
             llm_config=llm_config_assistant,
             max_consecutive_auto_reply=5,
-            system_message=gather_info_prompt
+            system_message=gather_info_prompt,
+            description="This is a web agent that can help the user to share the website url and things they want to notarize."
         )
         self.plugin_developer = autogen.AssistantAgent(
             name="plugin_developer",
             llm_config=llm_config_assistant,
             max_consecutive_auto_reply=5,
-            system_message=plugin_developer_prompt
+            system_message=plugin_developer_prompt,
+            description="once the information is gathered, this agnet can develop tlsn extension plugin"
         )
 
         self.user_proxy = UserProxyWebAgent( 

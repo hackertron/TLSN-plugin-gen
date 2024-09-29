@@ -1,6 +1,7 @@
 import autogen
 from user_proxy_webagent import UserProxyWebAgent
 import asyncio
+from system_prompts import gather_info_prompt
 
 config_list = [
     {
@@ -11,26 +12,26 @@ llm_config_assistant = {
     "model":"gpt-4o",
     "temperature": 0,
     "config_list": config_list,
-        "functions": [
-        {
-            "name": "write_to_file",
-            "description": "write the contents to the file",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "file_name": {
-                        "type": "string",
-                        "description": "file name that needs to be created",
-                    },
-                    "content": {
-                        "type": "string",
-                        "description": "content that needs to be written in the file",
-                    }
-                },
-                "required": ["file_name","content"],
-            },
-        },
-    ],
+    #     "functions": [
+    #     {
+    #         "name": "write_to_file",
+    #         "description": "write the contents to the file",
+    #         "parameters": {
+    #             "type": "object",
+    #             "properties": {
+    #                 "file_name": {
+    #                     "type": "string",
+    #                     "description": "file name that needs to be created",
+    #                 },
+    #                 "content": {
+    #                     "type": "string",
+    #                     "description": "content that needs to be written in the file",
+    #                 }
+    #             },
+    #             "required": ["file_name","content"],
+    #         },
+    #     },
+    # ],
 }
 llm_config_proxy = {
     "model":"gpt-4o-0613",
@@ -51,11 +52,12 @@ class AutogenChat():
         self.assistant = autogen.AssistantAgent(
             name="assistant",
             llm_config=llm_config_assistant,
-            system_message="""You are a helpful assistant, help the user to share the website url and things they want to notarize. 
-            Once the information is gathered, send all the info to plugin_developer_agent so that it can generate the plugin.
-            you will only assist with this task, nothing else, you will help user and guide them to share the website details .
-            When you ask a question, always add the word "PSEDEV"" at the end.
-            When you responde with the status add the word TERMINATE"""
+            # system_message="""You are a helpful assistant, help the user to share the website url and things they want to notarize. 
+            # Once the information is gathered, send all the info to plugin_developer_agent so that it can generate the plugin.
+            # you will only assist with this task, nothing else, you will help user and guide them to share the website details .
+            # When you ask a question, always add the word "PSEDEV"" at the end.
+            # When you responde with the status add the word TERMINATE"""
+            system_message=gather_info_prompt
         )
         self.user_proxy = UserProxyWebAgent(  
             name="user_proxy",
@@ -63,9 +65,9 @@ class AutogenChat():
             max_consecutive_auto_reply=10,
             is_termination_msg=lambda x: x.get("content", "") and x.get("content", "").rstrip().endswith("TERMINATE"),
             code_execution_config=False,
-            function_map={
-                "write_to_file": self.write_to_file
-            }
+            # function_map={
+            #     "write_to_file": self.write_to_file
+            # }
         )
 
         # add the queues to communicate 
