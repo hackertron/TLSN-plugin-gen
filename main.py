@@ -1,16 +1,20 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import HTMLResponse
 import uuid
 from autogen_chat import AutogenChat
 import asyncio
-import contextlib
 import uvicorn
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
+import openai
 import os
 
-load_dotenv()  # take environment variables from .env.
+_ = load_dotenv(find_dotenv()) # read local .env file
+openai.api_key = os.environ['OPENAI_API_KEY']
+# openai.log='debug'
 
 app = FastAPI()
+app.autogen_chat = {}
+
 
 class ConnectionManager:
     def __init__(self):
@@ -21,11 +25,13 @@ class ConnectionManager:
         self.active_connections.append(autogen_chat)
 
     async def disconnect(self, autogen_chat: AutogenChat):
-        await autogen_chat.client_receive_queue.put("DO_FINISH")
+        autogen_chat.client_receive_queue.put_nowait("DO_FINISH")
         print(f"autogen_chat {autogen_chat.chat_id} disconnected")
         self.active_connections.remove(autogen_chat)
 
+
 manager = ConnectionManager()
+
 
 async def send_to_client(autogen_chat: AutogenChat):
     while True:
@@ -57,10 +63,12 @@ async def websocket_endpoint(websocket: WebSocket, chat_id: str):
         await autogen_chat.start(data)
         print("DO_FINISHED")
     except Exception as e:
-        print("ERROR", e)
+        print("ERROR", str(e))
     finally:
-        with contextlib.suppress(Exception):
+        try:
             await manager.disconnect(autogen_chat)
+        except:
+            pass
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

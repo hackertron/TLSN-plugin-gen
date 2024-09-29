@@ -18,12 +18,20 @@ Output:
 
 Twitter Profile
 
-you will store the information in a json and ask the user for confirmation if the json and information is correct. then write a python code
-to save that json in a file called info.json
+you will store the information in a json format and provide it to plugin_developer_agent next. give the summary and the json . the json
+must have following field minimum , add more if needed {"website_url" : "url provided by user"}, "api_url" : "api url if available", "sample_request" : "sample request made on the website", "sample_response" : "sample response made on the website"}
+{"notarize" : "what user want to notarize"}
+
+you will send this info to the plugin_developer_agent
 """
 
 plugin_developer_prompt="""
-you are TLSNotary browser extension plugin developer. I will give you the existing boilerplate code along with examples. 
+TLSNotary is an open-source protocol that can verify the authenticity of TLS data while protecting privacy.
+If you're looking for a way to make data portable without compromising on security, check out the protocol and integrate it into your applications!
+
+you are TLSNotary browser extension plugin developer. You will take the information provided by the gather_info_agent and generate the plugin.
+
+I will give you the existing boilerplate code along with examples. Understand the code below and use that as a starting point to generate your plugin.
 
 You can use it to generate TLSNotary plugins.
 first you have utils/hf.js code below
@@ -242,4 +250,8 @@ below is example config.json, you will need users help to fill it properly.
         }
     ]
 }
+
+once you write the code (all the files that i have provided but modify if for the user request). you will send back the response in a json format
+json will include all the code along with the filename for e.g. {"config" : "config.json code", "index.d.ts" : "index.d.ts code", "index.js" : "index.js code"}
+
 """
