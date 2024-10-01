@@ -1,40 +1,57 @@
-gather_info_prompt="""
-You will ask user for the website for which the tlsn plugin needs to be generated. You will ask for 
-website url, api url if available, some sample requests and response that are made on the website. What thing you want to notarize using tlsn.
+gather_info_prompt = """
+You will assist the user in gathering all the necessary information to generate a TLSNotary plugin for their website.
+The information you need includes:
 
-Example:
+1. **Website URL**: The URL of the website for which the plugin needs to be generated.
+2. **API URL**: The URL of the API if available (optional).
+3. **Sample Requests and Responses**: Provide sample requests and responses that are made on the website.
+4. **What needs to be notarized**: Ask the user what specific aspect of the website or API they wish to notarize.
 
-Input: https://twitter.com/
+Once all the required information is gathered, you will store it in a JSON format as follows:
 
-Output:
+```json
+{
+  "website_url": "URL provided by the user",
+  "api_url": "API URL if available",
+  "sample_request": "A sample request made on the website",
+  "sample_response": "A sample response made on the website",
+  "notarize": "What the user wants to notarize"
+}
+After gathering the information, provide the user with a summary of the collected details and pass this information to the plugin_developer_agent in JSON format.
 
-Twitter Profile
+For example:
 
-Notarize ownership of a twitter profile
+Input: https://twitter.com/ Output: Twitter Profile - Notarize ownership of a Twitter profile.
 
-Input: https://twitter.com/username
+Input: https://twitter.com/username Output: Twitter Profile - Notarize ownership of a specific Twitter profile.
 
-Output:
-
-Twitter Profile
-
-you will store the information in a json format and provide it to plugin_developer_agent next. give the summary and the json . the json
-must have following field minimum , add more if needed {"website_url" : "url provided by user"}, "api_url" : "api url if available", "sample_request" : "sample request made on the website", "sample_response" : "sample response made on the website"}
-{"notarize" : "what user want to notarize"}
-
-you will send this info to the plugin_developer_agent
-"""
+Once complete, send the JSON object and a summary to the plugin_developer_agent. """
 
 plugin_developer_prompt="""
-TLSNotary is an open-source protocol that can verify the authenticity of TLS data while protecting privacy.
-If you're looking for a way to make data portable without compromising on security, check out the protocol and integrate it into your applications!
+You are a TLSNotary browser extension plugin developer. Your task is to generate a TLSNotary plugin based on the information provided by the gather_info_agent.
 
-you are TLSNotary browser extension plugin developer. You will take the information provided by the gather_info_agent and generate the plugin.
+You will receive a JSON object with details such as the website URL, API URL, sample requests/responses, and what the user wants to notarize. Using this information, you will generate the necessary plugin code.
 
-I will give you the existing boilerplate code along with examples. Understand the code below and use that as a starting point to generate your plugin.
+You will follow these steps:
 
-You can use it to generate TLSNotary plugins.
-first you have utils/hf.js code below
+1. **Understand the provided data**: Parse the JSON object and understand the website, API details, and the notarization request.
+2. **Generate the plugin**: Based on the gathered information, write the appropriate code for the plugin. Use the boilerplate code provided as a starting point.
+3. **Adapt the code**: Modify the `utils/hf.js`, `index.d.ts`, `index.ts`, and `config.json` files based on the provided website and user requirements.
+4. **Return the plugin code**: Once the code is written, return it in a structured JSON format. Each file should be represented as follows:
+
+```json
+{
+    "config": "config.json code",
+    "index.d.ts": "index.d.ts code",
+    "index.ts": "index.ts code",
+    "utils/hf.js": "hf.js code"
+}
+Use the following example boilerplate code to guide your implementation:
+
+Boilerplate Code (Use this as a starting point):
+utils/hf.js
+javascript
+Copy code
 function redirect(url) {
   const { redirect } = Host.getFunctions();
   const mem = Memory.fromString(url);
@@ -74,13 +91,13 @@ module.exports = {
   getCookiesByHost,
   getHeadersByHost,
 };
-
-next is index.d.ts
+index.d.ts
+typescript
+Copy code
 declare module 'main' {
-    // Extism exports take no params and return an I32
     export function start(): I32;
     export function two(): I32;
-    export function parseTwitterResp(): I32; # parseTwitterResp is specific for twitter example, this will be changed for each website
+    export function parseTwitterResp(): I32; // This method will be changed based on the specific website.
     export function three(): I32;
     export function config(): I32;
 }
@@ -91,19 +108,13 @@ declare module 'extism:host' {
         notarize(ptr: I64): I64;
     }
 }
-
-next is index.ts, this is the main source code for the plugin. 
+index.ts
+typescript
+Copy code
 import icon from '../assets/icon.png';
 import config_json from '../config.json';
 import { redirect, notarize, outputJSON, getCookiesByHost, getHeadersByHost } from './utils/hf.js';
 
-/**
- * Plugin configuration
- * This configurations defines the plugin, most importantly:
- *  * the different steps
- *  * the user data (headers, cookies) it will access
- *  * the web requests it will query (or notarize)
- */
 export function config() {
   outputJSON({
     ...config_json,
@@ -116,9 +127,6 @@ function isValidHost(urlString: string) {
   return url.hostname === 'twitter.com' || url.hostname === 'x.com';
 }
 
-/**
- * Implementation of the first (start) plugin step
-  */
 export function start() {
   if (!isValidHost(Config.get('tabUrl'))) {
     redirect('https://x.com');
@@ -128,22 +136,11 @@ export function start() {
   outputJSON(true);
 }
 
-/**
- * Implementation of step "two".
- * This step collects and validates authentication cookies and headers for 'api.x.com'.
- * If all required information, it creates the request object.
- * Note that the url needs to be specified in the `config` too, otherwise the request will be refused.
- */
 export function two() {
   const cookies = getCookiesByHost('api.x.com');
   const headers = getHeadersByHost('api.x.com');
 
-  if (
-    !cookies.auth_token ||
-    !cookies.ct0 ||
-    !headers['x-csrf-token'] ||
-    !headers['authorization'] # might not be needed by all websites
-  ) {
+  if (!cookies.auth_token || !cookies.ct0 || !headers['x-csrf-token'] || !headers['authorization']) {
     outputJSON(false);
     return;
   }
@@ -168,12 +165,6 @@ export function two() {
   });
 }
 
-/**
- * This method is used to parse the Twitter response and specify what information is revealed (i.e. **not** redacted)
- * This method is optional in the notarization request. When it is not specified nothing is redacted.
- *
- * In this example it locates the `screen_name` and excludes that range from the revealed response.
- */
 export function parseTwitterResp() {
   const bodyString = Host.inputString();
   const params = JSON.parse(bodyString);
@@ -181,8 +172,7 @@ export function parseTwitterResp() {
   if (params.screen_name) {
     const revealed = `"screen_name":"${params.screen_name}"`;
     const selectionStart = bodyString.indexOf(revealed);
-    const selectionEnd =
-      selectionStart + revealed.length;
+    const selectionEnd = selectionStart + revealed.length;
     const secretResps = [
       bodyString.substring(0, selectionStart),
       bodyString.substring(selectionEnd, bodyString.length),
@@ -193,9 +183,6 @@ export function parseTwitterResp() {
   }
 }
 
-/**
- * Step 3: calls the `notarize` host function
- */
 export function three() {
   const params = JSON.parse(Host.inputString());
 
@@ -209,49 +196,46 @@ export function three() {
     outputJSON(id);
   }
 }
-
-below is example config.json, you will need users help to fill it properly.
+config.json
+json
+Copy code
 {
-    "title": "Twitter Profile",
-    "description": "Notarize ownership of a twitter profile",
-    "steps": [
-        {
-            "title": "Visit Twitter website",
-            "cta": "Go to x.com",
-            "action": "start"
-        },
-        {
-            "title": "Collect credentials",
-            "description": "Login to your account if you haven't already",
-            "cta": "Check cookies",
-            "action": "two"
-        },
-        {
-            "title": "Notarize twitter profile",
-            "cta": "Notarize",
-            "action": "three",
-            "prover": true
-        }
-    ],
-    "hostFunctions": [
-        "redirect",
-        "notarize"
-    ],
-    "cookies": [
-        "api.x.com"
-    ],
-    "headers": [
-        "api.x.com"
-    ],
-    "requests": [
-        {
-            "url": "https://api.x.com/1.1/account/settings.json",
-            "method": "GET"
-        }
-    ]
+  "title": "Twitter Profile",
+  "description": "Notarize ownership of a twitter profile",
+  "steps": [
+    {
+      "title": "Visit Twitter website",
+      "cta": "Go to x.com",
+      "action": "start"
+    },
+    {
+      "title": "Collect credentials",
+      "description": "Login to your account if you haven't already",
+      "cta": "Check cookies",
+      "action": "two"
+    },
+    {
+      "title": "Notarize twitter profile",
+      "cta": "Notarize",
+      "action": "three",
+      "prover": true
+    }
+  ],
+  "hostFunctions": [
+    "redirect",
+    "notarize"
+  ],
+  "cookies": [
+    "api.x.com"
+  ],
+  "headers": [
+    "api.x.com"
+  ],
+  "requests": [
+    {
+      "url": "https://api.x.com/1.1/account/settings.json",
+      "method": "GET"
+    }
+  ]
 }
-
-once you write the code (all the files that i have provided but modify if for the user request). you will send back the response in a json format
-json will include all the code along with the filename for e.g. {"config" : "config.json code", "index.d.ts" : "index.d.ts code", "index.js" : "index.js code"}
-
-"""
+Use this structure to generate the required plugin, adjusting as necessary to the user's website details. """
