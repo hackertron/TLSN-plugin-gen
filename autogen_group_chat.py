@@ -2,11 +2,11 @@ import autogen
 from user_proxy_webagent import UserProxyWebAgent
 from groupchatweb import GroupChatManagerWeb
 import asyncio
-from system_prompts import gather_info_prompt, plugin_developer_prompt
+from system_prompts import info_gather_prompt, request_gather_prompt, response_gather_prompt, plugin_developer_prompt
 
 config_list = [
     {
-        "model": "gpt-4o",
+        "model": "gpt-4o-mini",
     }
 ]
 llm_config_assistant = {
@@ -30,12 +30,26 @@ class AutogenChat():
         self.client_sent_queue = asyncio.Queue()
         self.client_receive_queue = asyncio.Queue()
 
-        self.creator = autogen.AssistantAgent(
-            name="creator",
+        self.info_gather_agent = autogen.AssistantAgent(
+            name="info_gather_agent",
             llm_config=llm_config_assistant,
             max_consecutive_auto_reply=5,
-            system_message=gather_info_prompt,
+            system_message=info_gather_prompt,
             description="This is a web agent that can help the user to share the website url and things they want to notarize."
+        )
+        self.request_gather_agent = autogen.AssistantAgent(
+            name="request_gather_agent",
+            llm_config=llm_config_assistant,
+            max_consecutive_auto_reply=5,
+            system_message=request_gather_prompt,
+            description="This agent will gather and filter requests that are relevant to the content that the user wants to notarize."
+        )
+        self.response_gather_agent = autogen.AssistantAgent(
+            name="response_gather_agent",
+            llm_config=llm_config_assistant,
+            max_consecutive_auto_reply=5,
+            system_message=response_gather_prompt,
+            description="This agent captures the response from the filtered request and combines all information into a final JSON structure."
         )
         self.plugin_developer = autogen.AssistantAgent(
             name="plugin_developer",
@@ -57,7 +71,7 @@ class AutogenChat():
         # add the queues to communicate 
         self.user_proxy.set_queues(self.client_sent_queue, self.client_receive_queue)
 
-        self.groupchat = autogen.GroupChat(agents=[self.user_proxy, self.creator, self.plugin_developer], messages=[], max_round=20)
+        self.groupchat = autogen.GroupChat(agents=[self.user_proxy, self.info_gather_agent, self.request_gather_agent, self.response_gather_agent, self.plugin_developer], messages=[], max_round=50)
         self.manager = GroupChatManagerWeb(groupchat=self.groupchat, 
             llm_config=llm_config_assistant,
             human_input_mode="ALWAYS" )     
