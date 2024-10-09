@@ -21,6 +21,7 @@ llm_config_proxy = {
 }
 
 
+
 #############################################################################################
 # this is where you put your Autogen logic, here I have a 2 agents
 class AutogenChat():
@@ -71,7 +72,10 @@ class AutogenChat():
         # add the queues to communicate 
         self.user_proxy.set_queues(self.client_sent_queue, self.client_receive_queue)
 
-        self.groupchat = autogen.GroupChat(agents=[self.user_proxy, self.info_gather_agent, self.request_gather_agent, self.response_gather_agent, self.plugin_developer], messages=[], max_round=50)
+        self.groupchat = autogen.GroupChat(
+            agents=[self.user_proxy, self.info_gather_agent, self.request_gather_agent, self.response_gather_agent, self.plugin_developer], 
+            messages=[],
+            max_round=50)
         self.manager = GroupChatManagerWeb(groupchat=self.groupchat, 
             llm_config=llm_config_assistant,
             human_input_mode="ALWAYS" )     

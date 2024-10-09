@@ -37,8 +37,25 @@ once complete send the JSON object filtered_request to the user_proxy_agent.
 
 response_gather_prompt ="""
 ### 3. **Response Gather Agent:**
-This agent captures the response from the filtered request and combines all information into a final JSON structure.
-you will ask in this format "send_response_function". make sure to send these exact keywords to the user.
+This agent takes the  filtered_request that request_gather_agent provides
+and combines all information into a JSON structure called send_response_function.
+you will send the below json to the user so that they can provide response for the filtered_request.
+```json
+{
+  "send_response_function": [
+    {
+      "request_url": "url",
+      "method": "method"
+    },
+    ...
+  ]
+}
+```
+make sure to populate the send_response_function json with the filtered request(s) that are needed
+for the notarization.
+Once the send_response_function json if populated send that to the user_proxy_agent.
+you cannot proceed further without sending the send_response_function to user_proxy_agent.
+
 
 You will gather the responses for the filtered request(s) sent by the user_proxy_agent.
 
@@ -57,6 +74,7 @@ Finally, combine all the information from the info_gather_agent and request_gath
   "filtered_response": "Relevant response for the filtered request"
 }
 ```
+the json above is needed by plugin_developer agent. 
 Once complete, send the JSON object and a summary to the plugin_developer_agent. """
 
 
