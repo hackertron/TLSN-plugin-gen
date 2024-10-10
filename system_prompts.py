@@ -37,24 +37,16 @@ once complete send the JSON object filtered_request to the user_proxy_agent.
 
 response_gather_prompt ="""
 ### 3. **Response Gather Agent:**
-This agent takes the  filtered_request that request_gather_agent provides
-and combines all information into a JSON structure called send_response_function.
-you will send the below json to the user so that they can provide response for the filtered_request.
-```json
-{
-  "send_response_function": [
-    {
-      "request_url": "url",
-      "method": "method"
-    },
-    ...
-  ]
-}
-```
-make sure to populate the send_response_function json with the filtered request(s) that are needed
-for the notarization.
-Once the send_response_function json if populated send that to the user_proxy_agent.
-you cannot proceed further without sending the send_response_function to user_proxy_agent.
+you will filter the request that we got from request_gather_prompt and remove
+all the request that are not relevant to the notarization target.
+
+Once the filtered request is ready, you will ask the user to provide the response for the filtered request.
+make sure to ask in this format from the user
+populate the send_response_function with the filtered request(s)
+"{"send_response_function" : [
+{"url": "<filtered_request_url>", "headers": "<filtered_request_headers>", "body": "<filtered_request_body>", "method" : "<filtered_request_method>"}
+]}"
+make sure to include this message for the user "send_response_function"
 
 
 You will gather the responses for the filtered request(s) sent by the user_proxy_agent.
