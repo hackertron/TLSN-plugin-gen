@@ -4,21 +4,6 @@ Generate TLSNotary plugins using agents
 ## description
 This project implements a FastAPI-based web application that uses Autogen to create a group chat of AI agents for information gathering and processing, specifically designed to generate TLSNotary plugins.
 
-## Application flow
-graph TD
-    A[Client] -->|WebSocket Connection| B[FastAPI Server]
-    B --> C[AutogenChat]
-    C --> D[User Proxy Web Agent]
-    C --> E[Info Gather Agent]
-    C --> F[Request Gather Agent]
-    C --> G[Response Gather Agent]
-    C --> H[Plugin Developer Agent]
-    D <-->|User Interaction| A
-    E -->|Initial Info| F
-    F -->|Filtered Requests| G
-    G -->|Processed Responses| H
-    H -->|Generated Plugin| D
-    D -->|Final Output| A
 
 ## Prerequisites
 
