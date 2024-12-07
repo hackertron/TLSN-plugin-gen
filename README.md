@@ -32,7 +32,7 @@ This project implements a FastAPI-based web application that uses Autogen to cre
 
 1. Start the FastAPI server:
    ```
-   python main.py
+   uvicorn main:app --reload
    ```
    This will start the server on `http://0.0.0.0:8000`.
 
