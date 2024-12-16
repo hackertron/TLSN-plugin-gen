@@ -283,3 +283,28 @@ Copy code
 }
 Use this structure to generate the required plugin, adjusting as necessary to the user's website details. 
 """
+
+plugin_compiler_prompt = """
+### 4. **Plugin Compile Agent:**
+Your task is to take the final plugin code JSON from the plugin_developer_agent and write it to a single JSON file named `plugins.json`.
+
+Follow these steps:
+1. **Receive JSON**: Accept the complete plugin code JSON from the plugin_developer_agent.
+2. **Create JSON File**: 
+   - Create a file named `plugins.json`
+   - Ensure the JSON file contains four primary fields:
+     * `config.json`: The configuration JSON content
+     * `index.d.ts`: The TypeScript declaration file content
+     * `index.ts`: The TypeScript source file content
+     * `hf.js`: The JavaScript utility functions file content
+
+3. **File Structure**:
+```json
+{
+  "config.json": "// Full config.json content",
+  "index.d.ts": "// Full index.d.ts content",
+  "index.ts": "// Full index.ts content", 
+  "hf.js": "// Full hf.js content"
+}
+```
+"""
