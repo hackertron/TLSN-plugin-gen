@@ -2,7 +2,7 @@ import autogen
 from user_proxy_webagent import UserProxyWebAgent
 from groupchatweb import GroupChatManagerWeb
 import asyncio
-from system_prompts import info_gather_prompt, request_gather_prompt, response_gather_prompt, plugin_developer_prompt
+from system_prompts import info_gather_prompt, request_gather_prompt, response_gather_prompt, plugin_developer_prompt, plugin_compiler_prompt
 
 config_list = [
     {
@@ -59,6 +59,13 @@ class AutogenChat():
             system_message=plugin_developer_prompt,
             description="once the information is gathered, this agnet can develop tlsn extension plugin"
         )
+        self.plugin_compiler = autogen.AssistantAgent(
+            name="plugin_compiler",
+            llm_config=llm_config_assistant,
+            max_consecutive_auto_reply=5,
+            system_message=plugin_compiler_prompt,
+            description="once the plugin is developed, this agent can write the final json to plugins.json file"
+        )
 
         self.user_proxy = UserProxyWebAgent( 
             name="user_proxy",
@@ -66,19 +73,19 @@ class AutogenChat():
             system_message="""you are a helpful assistant, help the user to share the website url and things they want to notarize.""",
             max_consecutive_auto_reply=5,
             is_termination_msg=lambda x: x.get("content", "") and x.get("content", "").rstrip().endswith("TERMINATE"),
-            code_execution_config=False,
+            code_execution_config={"work_dir":"coding", "use_docker":False},
         )
 
         # add the queues to communicate 
         self.user_proxy.set_queues(self.client_sent_queue, self.client_receive_queue)
 
         self.groupchat = autogen.GroupChat(
-            agents=[self.user_proxy, self.info_gather_agent, self.request_gather_agent, self.response_gather_agent, self.plugin_developer], 
+            agents=[self.user_proxy, self.info_gather_agent, self.request_gather_agent, self.response_gather_agent, self.plugin_developer, self.plugin_compiler], 
             messages=[],
-            max_round=50)
+            max_round=100)
         self.manager = GroupChatManagerWeb(groupchat=self.groupchat, 
             llm_config=llm_config_assistant,
-            human_input_mode="ALWAYS" )     
+            human_input_mode="ALWAYS" )
 
     async def start(self, message):
         await self.user_proxy.a_initiate_chat(

@@ -281,23 +281,317 @@ Copy code
     }
   ]
 }
-Use this structure to generate the required plugin, adjusting as necessary to the user's website details. 
+Use the provided boilerplate code to guide your implementation. Ensure that the code is tailored to the specific website and notarization requirements provided in the JSON object. 
+few more examples below 
+
+twitter dm plugin example code
+index.js
+function isCorrectUrl(urlString) {
+  const url = new URL(urlString);
+  return url.hostname === 'twitter.com' || url.hostname === 'x.com';
+}
+
+function extractConversationId(urlString) {
+  const url = new URL(urlString);
+
+  // Validate the host and path pattern
+  if (url.hostname === 'x.com' && /\/messages\/[0-9]+-[0-9]+$/.test(url.pathname)) {
+    // Extract the Conversation ID from the path
+    return url.pathname.split('/messages/')[1];
+  }
+  return null; // Return null if URL is not valid or does not match the expected format
+}
+
+function gotoUrl() {
+  const { redirect } = Host.getFunctions();
+  const mem = Memory.fromString('https://x.com/messages');
+  redirect(mem.offset);
+}
+
+function start() {
+  if (!isCorrectUrl(Config.get('tabUrl'))) {
+    gotoUrl();
+    Host.outputString(JSON.stringify(false));
+    return;
+  }
+  Host.outputString(JSON.stringify(true));
+}
+
+function two() {
+  const conversation_id = extractConversationId(Config.get('tabUrl'))
+  const cookies = JSON.parse(Config.get('cookies'))['x.com'];
+  const headers = JSON.parse(Config.get('headers'))['x.com'];
+  // console.log("TLSN cookies");
+  // console.log(JSON.stringify(cookies));
+  // console.log("TLSN headers");
+  // console.log(JSON.stringify(headers));
+
+  if (
+    !conversation_id ||
+    !cookies.auth_token ||
+    !cookies.ct0 ||
+    !headers['x-csrf-token'] ||
+    !headers['authorization']
+  ) {
+    Host.outputString(JSON.stringify(false));
+    return;
+  }
+
+  Host.outputString(
+    JSON.stringify({
+      url: `https://x.com/i/api/1.1/dm/conversation/${conversation_id}.json`,
+      method: 'GET',
+      headers: {
+        'x-csrf-token': headers['x-csrf-token'],
+        Host: 'x.com',
+        authorization: headers.authorization,
+        Cookie: `lang=en; auth_token=${cookies.auth_token}; ct0=${cookies.ct0}`,
+        'Accept-Encoding': 'identity',
+        Connection: 'close',
+      },
+      secretHeaders: [
+        `x-csrf-token: ${headers['x-csrf-token']}`,
+        `cookie: lang=en; auth_token=${cookies.auth_token}; ct0=${cookies.ct0}`,
+        `authorization: ${headers.authorization}`,
+      ],
+    }),
+  );
+
+}
+
+function three() {
+  const params = JSON.parse(Host.inputString());
+  const { notarize } = Host.getFunctions();
+
+  if (!params) {
+    Host.outputString(JSON.stringify(false));
+  } else {
+    const mem = Memory.fromString(JSON.stringify(params));
+    const idOffset = notarize(mem.offset);
+    const id = Memory.find(idOffset).readString();
+    Host.outputString(JSON.stringify(id));
+  }
+}
+
+function config() {
+  Host.outputString(
+    JSON.stringify({
+      title: 'Twitter Messages conversation',
+      description: 'Notarize a Twitter Messages conversation',
+      steps: [
+        {
+          title: 'Visit X/Twitter Messages',
+          description: "Log in to your account if you haven't already",
+          cta: 'Go to x.com',
+          action: 'start',
+        },
+        {
+          title: 'Open the conversation you want to notarize',
+          description: "Pick a short conversation (to meet current size limits)",
+          cta: 'Check',
+          action: 'two',
+        },
+        {
+          title: 'Notarize conversation',
+          cta: 'Notarize',
+          action: 'three',
+          prover: true,
+        },
+      ],
+      hostFunctions: ['redirect', 'notarize'],
+      cookies: ['x.com'],
+      headers: ['x.com'],
+      requests: [
+        {
+          url: `https://x.com/i/api/1.1/dm/conversation/*.json`,
+          method: 'GET',
+        },
+      ],
+    }),
+  );
+}
+
+module.exports = { start, config, two, three };
+
+discord DM plugin code below 
+index.js
+function isValidHost(urlString) {
+  const url = new URL(urlString);
+  return url.hostname === 'discord.com' || url.hostname === 'discord.gg'
+}
+
+
+function gotoDiscord() {
+  const { redirect } = Host.getFunctions();
+  const mem = Memory.fromString('https://discord.com/channels/@me');
+  redirect(mem.offset);
+}
+
+function extractConversationId(urlString) {
+  const url = new URL(urlString);
+  if (url.hostname === 'discord.com' && /\/channels\/@me\/[0-9]+$/.test(url.pathname)) {
+    return url.pathname.split('/@me/')[1]
+  } else {
+    return url.pathname.split('/channels/')[1]
+  }
+}
+
+function start() {
+  if (!isValidHost(Config.get('tabUrl'))) {
+    gotoDiscord();
+    Host.outputString(JSON.stringify(false));
+    return;
+  }
+  Host.outputString(JSON.stringify(true));
+}
+
+
+function two() {
+  const conversationId = extractConversationId(Config.get('tabUrl'));
+  // const cookies = JSON.parse(Config.get('cookies'))['discord.com'];
+  const headers = JSON.parse(Config.get('headers'))['discord.com'];
+
+  // console.log("conversationId");
+  // console.log(JSON.stringify(conversationId));
+  // console.log(JSON.stringify(headers['Authorization']));
+
+  if (
+    !conversationId ||
+    !headers['Authorization']
+  ) {
+    Host.outputString(JSON.stringify(false));
+    return;
+  }
+
+  Host.outputString(
+    JSON.stringify({
+      url: `https://discord.com/api/v9/channels/${conversationId}/messages?limit=2`,
+      method: 'GET',
+      headers: {
+        Host: 'discord.com',
+        Accept: '*/*',
+        'Accept-Encoding': 'identity',
+        'User-Agent': headers['User-Agent'],
+        Authorization: headers['Authorization'],
+        Connection: 'close'
+      },
+      secretHeaders: [
+        `authorization: ${headers['Authorization']}`
+      ]
+    })
+  )
+}
+
+function parseDiscordDm() {
+  const bodyString = Host.inputString();
+  const params = JSON.parse(bodyString);
+  console.log('PARAMS', JSON.stringify(params[0].content));
+  if (params[0].content) {
+    const revealed = `"content":"${params[0].content}"`;
+    const selectionStart = bodyString.indexOf(revealed);
+    const selectionEnd = selectionStart + revealed.length;
+    const secretResps = [
+      bodyString.substring(0, selectionStart),
+      bodyString.substring(selectionEnd, bodyString.length),
+    ];
+    Host.outputString(JSON.stringify(secretResps));
+  } else {
+    Host.outputString(JSON.stringify(false));
+  }
+}
+
+
+function three() {
+  const params = JSON.parse(Host.inputString());
+  const { notarize } = Host.getFunctions();
+  console.log(JSON.stringify('THREE PARAMS', params));
+  if (!params) {
+    Host.outputString(JSON.stringify(false));
+  } else {
+    const mem = Memory.fromString(JSON.stringify({
+        ...params,
+       getSecretResponse: 'parseDiscordDm'
+    }));
+    const idOffset = notarize(mem.offset);
+    const id = Memory.find(idOffset).readString();
+    Host.outputString(JSON.stringify(id));
+  }
+}
+
+function config() {
+  Host.outputString(
+    JSON.stringify({
+      title: 'Discord DMs',
+      description: 'Notarize your Discord DMs',
+
+      steps: [
+        {
+          title: "Goto Discord DM's",
+          description: "Log in to your discord if you haven't already",
+          cta: "Go to discord.com",
+          action: 'start'
+        },
+        {
+          title: 'Open the DM you want to notarize',
+          description: "Pick a short conversation (to meet the current size limits)",
+          cta: 'Check',
+          action: 'two'
+        },
+        {
+          title: 'Notarize DM',
+          cta: 'Notarize',
+          action: 'three',
+          prover: true
+        }
+      ],
+      hostFunctions: ['redirect', 'notarize'],
+      headers: ['discord.com'],
+      requests: [
+        {
+          url: `https://discord.com/api/v9/channels/*/messages?limit=2`,
+          method: 'GET',
+        },
+      ],
+    }),
+  );
+}
+
+
+module.exports = { config, start, two, three, parseDiscordDm };
+
+index.d.ts
+declare module 'main' {
+  export function start(): I32;
+  export function two(): I32;
+  export function parseDiscordDm(): I32;
+  export function three(): I32;
+  export function config(): I32;
+}
+
+declare module 'extism:host' {
+  interface user {
+    redirect(ptr: I64): void;
+    notarize(ptr: I64): I64;
+  }
+}
+
 """
 
 plugin_compiler_prompt = """
 ### 4. **Plugin Compile Agent:**
 Your task is to take the final plugin code JSON from the plugin_developer_agent and write it to a single JSON file named `plugins.json`.
+you will write a python code and then execute it. the code should create a file called plugins.json
+the content of the file should be the json object that you received from the plugin_developer_agent
 
 Follow these steps:
 1. **Receive JSON**: Accept the complete plugin code JSON from the plugin_developer_agent.
 2. **Create JSON File**: 
-   - Create a file named `plugins.json`
-   - Ensure the JSON file contains four primary fields:
-     * `config.json`: The configuration JSON content
-     * `index.d.ts`: The TypeScript declaration file content
-     * `index.ts`: The TypeScript source file content
-     * `hf.js`: The JavaScript utility functions file content
-
+   - write a python code to create a file named `plugins.json`
+    - Ensure the JSON file contains four primary fields:
+      * `config.json`: The configuration JSON content
+      * `index.d.ts`: The TypeScript declaration file content
+      * `index.ts`: The TypeScript source file content
+      * `hf.js`: The JavaScript utility functions file content
 3. **File Structure**:
 ```json
 {
@@ -307,4 +601,7 @@ Follow these steps:
   "hf.js": "// Full hf.js content"
 }
 ```
+4. **Write to File**: Write the JSON content to the `plugins.json` file.
+5. **Completion**: Once the file is created, your task is complete. 
+6  **Send the file to the user_proxy_agent**: once the file is created send the file to the user_proxy_agent
 """
