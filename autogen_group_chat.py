@@ -64,7 +64,7 @@ class AutogenChat():
             llm_config=llm_config_assistant,
             max_consecutive_auto_reply=5,
             system_message=plugin_compiler_prompt,
-            description="once the plugin is developed, this agent can write the final json to plugins.json file"
+            description="once the plugin is developed, this agent can output the final json. only the final json will be sent to the user."
         )
 
         self.user_proxy = UserProxyWebAgent( 

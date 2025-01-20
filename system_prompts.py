@@ -579,19 +579,11 @@ declare module 'extism:host' {
 
 plugin_compiler_prompt = """
 ### 4. **Plugin Compile Agent:**
-Your task is to take the final plugin code JSON from the plugin_developer_agent and write it to a single JSON file named `plugins.json`.
-you will write a python code and then execute it. the code should create a file called plugins.json
-the content of the file should be the json object that you received from the plugin_developer_agent
+Your task is to take the final plugin code JSON from the plugin_developer_agent and write it to a single JSON.
+the content of the json should be the json object that you received from the plugin_developer_agent
 
 Follow these steps:
 1. **Receive JSON**: Accept the complete plugin code JSON from the plugin_developer_agent.
-2. **Create JSON File**: 
-   - write a python code to create a file named `plugins.json`
-    - Ensure the JSON file contains four primary fields:
-      * `config.json`: The configuration JSON content
-      * `index.d.ts`: The TypeScript declaration file content
-      * `index.ts`: The TypeScript source file content
-      * `hf.js`: The JavaScript utility functions file content
 3. **File Structure**:
 ```json
 {
@@ -601,7 +593,7 @@ Follow these steps:
   "hf.js": "// Full hf.js content"
 }
 ```
-4. **Write to File**: Write the JSON content to the `plugins.json` file.
+4. **Output the JSON**: output the JSON content. make sure to only output the json nothing else. no extra text, just the json object.
 5. **Completion**: Once the file is created, your task is complete. 
-6  **Send the file to the user_proxy_agent**: once the file is created send the file to the user_proxy_agent
+6  **Send the json to the user_proxy_agent**: once the json is created send the file to the user_proxy_agent. only the json object. nothing else no extra text should be outputted.
 """
